@@ -33,6 +33,19 @@ module OmniAuth
         consumer
       end
 
+      def request_phase # rubocop:disable MethodLength
+        request_token = consumer.get_request_token({:oauth_callback => callback_url}, options.request_params)
+        session["oauth"] ||= {}
+        session["oauth"][name.to_s] = {"callback_confirmed" => request_token.callback_confirmed?, "request_token" => request_token.token, "request_secret" => request_token.secret}
+
+        redirect request_token.authorize_url(options[:authorize_params].merge(:oauth_callback => callback_url))
+
+      rescue ::Timeout::Error => e
+        fail!(:timeout, e)
+      rescue ::Net::HTTPFatalError, ::OpenSSL::SSL::SSLError => e
+        fail!(:service_unavailable, e)
+      end
+
       class GarminConsumer < ::OAuth::Consumer
         protected
 
